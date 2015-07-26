@@ -1,0 +1,135 @@
+---
+title: "Practical machine Learning"
+author: "BaronBlaxland"
+date: "26 July 2015"
+output: html_document
+---
+
+First of all the training data was read in and from that it was split into two sets train (70%) and test (30%).  The data was examined and there were many NA and irrelevant data therefore these datasets were removed. 
+
+```{r,}
+library(caret)
+set.seed(12345)
+pml.training <- read.csv("C:/Users/Lizzie/Desktop/coursera/pml-training.csv", header=TRUE);
+
+inTrain<-createDataPartition(y=pml.training$classe, p=0.7,list=FALSE);
+
+training<-pml.training[inTrain,];
+testing<-pml.training[-inTrain,];
+
+new.training<-training[ , colSums(is.na(training)) == 0];
+numeric.training<- sapply(new.training, is.numeric);
+new.new<-new.training[,numeric.training];
+
+new.new<-cbind(new.new,training$classe);
+```
+
+This data set was then checked to ensure there were no zero variance and as these values were found to all be false this emant all the variables were suitable to include in the future analysis.
+
+```{r}
+check.zero.variance <- nearZeroVar(new.new, saveMetrics=TRUE)
+check.zero.variance
+```
+
+Next some pre-processing techniques were used to determine the principle components of the data with five groupings of data.  
+
+
+```{r}
+preProc<-preProcess(new.new[-57],method="pca",pcaComp=5)
+trainPC<-predict(preProc,new.new[-57])
+plot(trainPC[,1],trainPC[,2])
+new.testing<-training[ , colSums(is.na(testing)) == 0]
+numeric.testing<- sapply(new.testing, is.numeric)
+new.test<-new.training[,numeric.testing]
+
+new.test<-cbind(new.new,training$classe)
+new.test<-new.test[,-58]
+
+preProc.test<-preProcess(new.test[,-57],method="pca",pcaComp=5)
+trainPC.test<-predict(preProc,new.test[-57])
+
+
+modelFit<-train(new.new$"training$classe"~.,method="knn",preProcess=c("center", "scale"), trControl=trainControl(method = "cv", number = 5),data=trainPC)
+
+modelFit
+
+predictions <- predict(modelFit, newdata=new.test$classe)
+
+print(confusionMatrix(predictions, new.test$"training$classe"))
+```
+
+With an accuracy of 90% this seemed like an accurate method.  This was then used on the real data, however, when the data was input the wrong results were found.  Therefore a new method was used.
+
+```{r, echo=FALSE}
+
+
+pml.testing <- read.csv("C:/Users/Lizzie/Desktop/coursera/pml-testing.csv", header=TRUE)
+
+
+
+final.testing<-pml.testing[ , colSums(is.na(pml.testing)) == 0]
+
+final.numeric.testing<- sapply(final.testing, is.numeric)
+final.test<-final.testing[,final.numeric.testing]
+
+final.test<-final.test[,-1]
+
+preProc.test<-preProcess(final.test[,-57],method="pca",pcaComp=5)
+
+trainPC.test<-predict(preProc.test,final.test[-57])
+
+
+print(predict(modelFit, newdata=trainPC.test))
+
+```
+
+The new method using random trees was then utilised with a centre and scale method of pre processing and a four fold cross validation.  
+```{r}
+pml.training <- read.csv("C:/Users/Lizzie/Desktop/coursera/pml-training.csv", header=TRUE);
+
+set.seed(12345)
+
+inTrain<-createDataPartition(y=pml.training$classe, p=0.7,list=FALSE);
+
+training<-pml.training[inTrain,];
+testing<-pml.training[-inTrain,];
+
+new.training<-training[ , colSums(is.na(training)) == 0];
+numeric.training<- sapply(new.training, is.numeric);
+new.new<-new.training[,numeric.training];
+
+new.new<-cbind(new.new,training$classe);
+
+new.new<-new.new[,-1]
+new.new<-new.new[,-1]
+new.new<-new.new[,-1]
+new.new<-new.new[,-1]
+new.new<-new.new[,-1]
+
+
+modelFit <- train(new.new$"training$classe" ~ ., method="rf",preProcess=c("center", "scale"), trControl=trainControl(method = "cv", number = 4), data=new.new[-52])
+
+print(modelFit, digits=3)
+
+
+pml.testing <- read.csv("C:/Users/Lizzie/Desktop/coursera/pml-testing.csv", header=TRUE)
+
+final.testing<-pml.testing[ , colSums(is.na(pml.testing)) == 0]
+
+ final.numeric.testing<- sapply(final.testing, is.numeric)
+ final.test<-final.testing[,final.numeric.testing]
+ 
+ final.test<-final.test[,-1]
+ final.test<-final.test[,-1]
+ final.test<-final.test[,-1]
+ final.test<-final.test[,-1]
+ final.test<-final.test[,-1]
+ print(predict(modelFit, newdata=final.test))
+
+```
+
+The result of this gives an accuracy of 0.991 with a cross validation error of 0.001.  This is a much greater result than that found using the pricnipal componenet analysis and knn
+
+
+The out of sampel error between the trainign data and the test data was 0.032.
+
